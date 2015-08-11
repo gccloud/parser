@@ -1,4 +1,4 @@
-# Parser
+# CodeIgniter Parser
 CI Parser Library extension (empty tags replacement, extended loops, conditional IF and SWITCH structures, CI Helper calls)
 <br>
 <br>
