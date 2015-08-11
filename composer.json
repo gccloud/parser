@@ -1,14 +1,14 @@
 {
-    "name": "toolbox/parser",
+    "name": "gccloud/parser",
     "keywords": ["Parser", "library", "codeigniter"],
-    "description": "CI Parser library override",
-    "homepage": "http://195-154-184-158.rev.poneytelecom.eu:7990/scm/tool/parser.git",
+    "description": "CodeIgniter 3 Parser library extension",
+    "homepage": "https://github.com/gccloud/parser",
     "license": "Apache-2.0",
     "type": "codeigniter-third-party",
     "authors": [
         {
             "name": "Gregory Carrodano",
-            "email": "g.carrodano@santiane.fr",
+            "email": "g.carrodano@gmail.com",
             "role": "Developer"
         }
     ],
