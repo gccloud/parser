@@ -12,14 +12,8 @@ CI Parser Library extension (empty tags replacement, extended loops, conditional
 ```json
 {
     "require": {
-        "MY_Parser": "dev-master"
-    },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url":  "http://195-154-184-158.rev.poneytelecom.eu:7990/scm/tool/my_parser.git"
-        }
-    ]
+        "gccloud/parser": "1.0.*"
+    }
 }
 ```
 #### Run composer update
