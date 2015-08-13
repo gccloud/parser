@@ -8,10 +8,15 @@ CI Parser Library extension (empty tags replacement, extended loops, conditional
 <br>
 ## Installation
 ### Step 1 Installation by Composer
-#### Edit /composer.json
+#### Run composer
+```shell
+composer require gccloud/parser
+```
+#### Or edit /composer.json
 ```json
 {
-    "require": {
+    "require":
+    {
         "gccloud/parser": "1.0.*"
     }
 }
