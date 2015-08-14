@@ -23,7 +23,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20150810
+ * @version     20150814
  */
 class MY_Parser extends CI_Parser{
 
@@ -65,7 +65,7 @@ class MY_Parser extends CI_Parser{
         if( ! empty($unparsed)) {
             foreach ($unparsed as $u) {
                 if($u[0] != '{else}') {
-                    $template = str_ireplace($u[0], FALSE, $template);
+                    $template = str_ireplace($u[0], "\"\"", $template);
                 }
             }
         }
@@ -95,8 +95,9 @@ class MY_Parser extends CI_Parser{
         $currency = "&pound;";
 
         // First we'll check for IF conditionals
-        preg_match_all("#".$this->l_delim."if (.+)".$this->r_delim."(.+)".$this->l_delim."/if".$this->r_delim."#sU", $template, $conditionals, PREG_SET_ORDER);
-        if( ! empty($conditionals) ) {
+        preg_match_all("#".$this->l_delim."if (.+)".$this->r_delim."(.+)".$this->l_delim."\/if".$this->r_delim."#sU", $template, $conditionals, PREG_SET_ORDER);
+
+        if( ! empty($conditionals)) {
             // And loop through the conditionals we found above
             foreach ($conditionals as $conditional) {
 
@@ -106,44 +107,46 @@ class MY_Parser extends CI_Parser{
                 // And dissect the if statement to get the comparison values and operator. Also remove any currency characters.
                 $statement = str_replace($currency, '', $conditional[1]);
                 preg_match('#(.+\s?)(>|>=|<>|!=|==|<=|<)(.+\s?)#', $statement, $comparison);
-                $a = ( trim($comparison[1]) != '' ) ? str_replace('"', '', trim($comparison[1]) ) : FALSE;
-                $b = ( trim($comparison[3]) != '' ) ? str_replace('"', '', trim($comparison[3]) ) : FALSE;
+                $a = (trim($comparison[1]) != '') ? str_replace('"', '', trim($comparison[1])) : FALSE;
+                $b = (trim($comparison[3]) != '') ? str_replace('"', '', trim($comparison[3])) : FALSE;
                 $operator = trim( $comparison[2] );
 
                 // Check for true/false values and convert them to booleans for better parser comparison
-                if ( $a == 'true' or $a == 'TRUE' ) {
+                if($a == 'true' or $a == 'TRUE') {
                     $a = 1;
-                } elseif ( $a == "false" or $a == 'FALSE' ) {
+                }
+                elseif($a == "false" or $a == 'FALSE') {
                     $a = 0;
                 }
-                if ( $b == 'true' or $b == 'TRUE' ) {
+                if($b == 'true' or $b == 'TRUE') {
                     $b = 1;
-                } elseif ( $b == 'false' or $b == 'FALSE' ) {
+                }
+                elseif ($b == 'false' or $b == 'FALSE') {
                     $b = 0;
                 }
 
                 // Then we check if the condition is fullfilled
-                switch( $operator ) {
+                switch($operator) {
                     case '>' :
-                        $output = ( $a > $b ) ? $output : '';
+                        $output = ($a > $b) ? $output : '';
                         break;
                     case '>=' :
-                        $output = ( $a >= $b ) ? $output : '';
+                        $output = ($a >= $b) ? $output : '';
                         break;
                     case '<>' :
-                        $output = ( $a <> $b ) ? $output : '';
+                        $output = ($a <> $b) ? $output : '';
                         break;
                     case '!=' :
-                        $output = ( $a != $b ) ? $output : '';
+                        $output = ($a != $b) ? $output : '';
                         break;
                     case '==' :
-                        $output = ( $a == $b ) ? $output : '';
+                        $output = ($a == $b) ? $output : '';
                         break;
                     case '<=' :
-                        $output = ( $a <= $b ) ? $output : '';
+                        $output = ($a <= $b) ? $output : '';
                         break;
                     case '<' :
-                        $output = ( $a < $b ) ? $output : '';
+                        $output = ($a < $b) ? $output : '';
                         break;
                 }
                 // Then let's check for an {else}
