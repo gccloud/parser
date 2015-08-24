@@ -30,12 +30,13 @@ class MY_Parser extends CI_Parser{
     /**
      * Parses pseudo-variables contained in the specified template, replacing them with the data in the second param
      *
-     * @param   string
-     * @param   array
-     * @param   bool
-     * @return  string
+     * @param  string
+     * @param  array
+     * @param  bool
+     * @return string
      */
     protected function _parse($template, $data, $return = FALSE) {
+        // First check if we've got something to parse
         if ($template === '') {
             return FALSE;
         }
@@ -47,7 +48,7 @@ class MY_Parser extends CI_Parser{
         $template = $this->_parse_loops($template, $data);
 
         $replace = array();
-        foreach ($data as $key => $val) {
+        foreach($data as $key => $val) {
             $replace = array_merge(
                 $replace,
                 is_object($val) ? $this->_parse_object($key, $val, $template) : 
@@ -60,18 +61,13 @@ class MY_Parser extends CI_Parser{
         foreach($replace as $from => $to) {
             $template = str_ireplace($from, $to, $template);
         }
+
         // Unparsed tags replacement
-        preg_match_all('#'.$this->l_delim.'\w+'.$this->r_delim.'#sU', $template, $unparsed, PREG_SET_ORDER);
-        if( ! empty($unparsed)) {
-            foreach ($unparsed as $u) {
-                if($u[0] != '{else}') {
-                    $template = str_ireplace($u[0], "\"\"", $template);
-                }
-            }
-        }
+        $template = $this->_remove_unparsed($template);
 
         // Check for helpers calls
         $template = $this->_parse_helpers($template, $data);
+
         // And last, check for conditional statements
         $template = $this->_parse_conditionals($template, $data);
 
@@ -86,9 +82,9 @@ class MY_Parser extends CI_Parser{
     
     /**
      * Parses conditionals pseudo-variables contained in the specified template view
-     * @param   string
-     * @param   array
-     * @return  string
+     * @param  string
+     * @param  array
+     * @return string
      */
     protected function _parse_conditionals($template, $data) {
         // Some settings
@@ -206,9 +202,9 @@ class MY_Parser extends CI_Parser{
 
     /**
      * Parses loops pseudo-variables contained in the specified template view
-     * @param   string
-     * @param   array
-     * @return  string
+     * @param  string
+     * @param  array
+     * @return string
      */
     protected function _parse_loops($template, $data) {
         // First we'll check for FOR structures
@@ -276,9 +272,9 @@ class MY_Parser extends CI_Parser{
 
     /**
      * Parses helpers pseudo-variables (thus calling corresponding helpers) contained in the specified template view
-     * @param   string
-     * @param   array
-     * @return  string
+     * @param  string
+     * @param  array
+     * @return string
      */
     protected function _parse_helpers($template, $data) {
         // First we'll check for any declarations
@@ -292,10 +288,14 @@ class MY_Parser extends CI_Parser{
                 // Then we catch the actual Helper function to call
                 $func = $helper[1];
                 // And any argument passed to it
-                $args = ( ! empty($helper[3]) ) ? $this->_parse_helper_args($helper[3]) : array();
+                $args = ( ! empty($helper[3])) ? $this->_parse_helper_args($helper[3]) : array();
 
                 // Last, we have to check if it's a correctly defined Helper function
-                if(function_exists($func)) {         
+                if($func === 'empty') {
+                    $return = ($args !== "");
+                    $template = str_replace($code, $return, $template);
+                }
+                else if(function_exists($func)) {         
                     // We finally try to execute it (and catch any result returned)
                     try {
                         $return = call_user_func_array($func, $args);
@@ -312,6 +312,11 @@ class MY_Parser extends CI_Parser{
         return $template;
     }
 
+    /**
+     * [_parse_helper_args description]
+     * @param  string
+     * @return array
+     */
     protected function _parse_helper_args($args_string) {
         // First we check if any argument string was actually detected
         if( ! empty($args_string)) {
@@ -420,6 +425,33 @@ class MY_Parser extends CI_Parser{
         }
 
         return $replace;
+    }
+
+    /**
+     * [_remove_unparsed description]
+     * @param  string
+     * @return string
+     */
+    protected function _remove_unparsed($template) {
+        // Pair tags removal
+        preg_match_all('#('.$this->l_delim.'(\w+)'.$this->r_delim.'(.+?)'.$this->l_delim.'\/(\2)'.$this->r_delim.')#sU', $template, $unparsed, PREG_SET_ORDER);
+        if( ! empty($unparsed)) {
+            foreach ($unparsed as $u) {
+                $template = str_ireplace($u[0], "", $template);
+            }
+        }
+
+        // Simple tags removal
+        preg_match_all('#'.$this->l_delim.'\w+'.$this->r_delim.'#sU', $template, $unparsed, PREG_SET_ORDER);
+        if( ! empty($unparsed)) {
+            foreach ($unparsed as $u) {
+                if($u[0] != '{else}') {
+                    $template = str_ireplace($u[0], "\"\"", $template);
+                }
+            }
+        }
+
+        return $template;
     }
 
 }
