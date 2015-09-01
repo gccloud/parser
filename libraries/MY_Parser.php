@@ -9,7 +9,6 @@
  * @license http://opensource.org/licenses/MIT  MIT License
  * @link    http://codeigniter.com
  * @since   Version 1.0.0
- * @filesource
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -23,7 +22,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20150827
+ * @version     20150901
  */
 class MY_Parser extends CI_Parser {
 
@@ -88,103 +87,97 @@ class MY_Parser extends CI_Parser {
      * @return string
      */
     protected function _parse_conditionals($template) {
-        $template = preg_replace('#'.$this->l_delim.'\/if'.$this->r_delim.'#sU', '<?php } ?>', $template, -1);
-        $template = preg_replace('#'.$this->l_delim.'else'.$this->r_delim.'#sU', '<?php } else { ?>', $template, -1);
-        $template = preg_replace('#'.$this->l_delim.'if (.+)'.$this->r_delim.'#sU', '<?php if($1) { ?>', $template, -1);
-        ob_start();
-        eval('?>'.$template);
-        return ob_get_clean(); 
+        // Some settings
+        $currency = '&pound;';
 
-        // // Some settings
-        // $currency = "&pound;";
+        // Pre-parsing process : we'll first replace each {if}...{/if} pair by a numbered one - {if(n)}...{/if(n)} - for correct processing
+        $if_pattern = $this->l_delim.'if ';
+        $endif_pattern = $this->l_delim.'\/if'.$this->r_delim;
 
-        // // $explode = explode(PHP_EOL, $template);
-        // // $stock = array();
-        // // $count = 1;
-        // // foreach($explode as $line) {
-        // //     $rc = 1;
-        // //     while($rc > 0) {
-        // //         $replace = preg_replace('#{if #', '{if'.$count.' ', $line, -1, $rc);
-        // //         // var_dump($replace);
-        // //         var_dump($rc);
-        // //         if($rc > 0) {
-        // //             $stock[] = $count;
-        // //             ++$count;
-        // //             var_dump($stock);
-        // //         }
-        // //     }
-        // // }
-        // // // exit;
-        // // var_dump($explode);
+        preg_match_all('#'.$if_pattern.'|'.$endif_pattern.'#sU', $template, $preprocess, PREG_SET_ORDER);
 
-        // // First we'll check for IF conditionals
-        // // preg_match_all("#".$this->l_delim."if (.+)".$this->r_delim."(.+)".$this->l_delim."\/if".$this->r_delim."#", $template, $conditionals, PREG_SET_ORDER);
-        // preg_match("#".$this->l_delim."if (.+)".$this->r_delim."(.+)".$this->l_delim."\/if".$this->r_delim."#sU", $template, $conditional);
+        if( ! empty($preprocess)) {
+            $count = 0;
+            $last_count = array();
+            foreach($preprocess as $p) {
+                if($p[0] === $if_pattern) {
+                    ++$count;
+                    $last_count[] = $count;
+                    $template = preg_replace('#'.$if_pattern.'#', $this->l_delim.'if'.$count.' ', $template, 1);
+                }
+                else {
+                    $last = array_pop($last_count);
+                    $template = preg_replace('#'.$endif_pattern.'#', $this->l_delim.'/if'.$last.$this->r_delim, $template, 1);
+                }
+            }
 
-        // if( ! empty($conditional)) {
-        //     // var_dump($conditional);
+            // First we'll check for IF conditionals
+            preg_match_all('#'.$this->l_delim.'if(\d+) (.+)'.$this->r_delim.'(.+)'.$this->l_delim.'\/if(\1)'.$this->r_delim.'#sU', $template, $conditionals, PREG_SET_ORDER);
 
-        //     // First we extract the content we want to output if the conditional is satisfied
-        //     $output = $conditional[2]; 
+            if( ! empty($conditionals)) {
+                foreach($conditionals as $conditional) {
+                    // First we extract the content we want to output if the conditional is satisfied
+                    $output = $conditional[3]; 
 
-        //     // And dissect the if statement to get the comparison values and operator. Also remove any currency characters.
-        //     $statement = str_replace($currency, '', $conditional[1]);
+                    // And dissect the if statement to get the comparison values and operator. Also remove any currency characters.
+                    $statement = str_replace($currency, '', $conditional[2]);
 
-        //     preg_match('#(.+\s?)(>|>=|<>|!=|==|<=|<)(.+\s?)#', $statement, $comparison);
+                    preg_match('#(.+\s?)(>|>=|<>|!=|==|<=|<)(.+\s?)#', $statement, $comparison);
 
-        //     $a = (trim($comparison[1]) != '') ? str_replace('"', '', trim($comparison[1])) : FALSE;
-        //     $b = (trim($comparison[3]) != '') ? str_replace('"', '', trim($comparison[3])) : FALSE;
-        //     $operator = trim( $comparison[2] );
+                    $a = (trim($comparison[1]) != '') ? str_replace('"', '', trim($comparison[1])) : FALSE;
+                    $b = (trim($comparison[3]) != '') ? str_replace('"', '', trim($comparison[3])) : FALSE;
+                    $operator = trim($comparison[2]);
 
-        //     // Check for true/false values and convert them to booleans for better parser comparison
-        //     if($a == 'true' or $a == 'TRUE') {
-        //         $a = 1;
-        //     }
-        //     elseif($a == "false" or $a == 'FALSE') {
-        //         $a = 0;
-        //     }
-        //     if($b == 'true' or $b == 'TRUE') {
-        //         $b = 1;
-        //     }
-        //     elseif ($b == 'false' or $b == 'FALSE') {
-        //         $b = 0;
-        //     }
+                    // Check for true/false values and convert them to booleans for better parser comparison
+                    if($a == 'true' or $a == 'TRUE') {
+                        $a = 1;
+                    }
+                    elseif($a == "false" or $a == 'FALSE') {
+                        $a = 0;
+                    }
+                    if($b == 'true' or $b == 'TRUE') {
+                        $b = 1;
+                    }
+                    elseif ($b == 'false' or $b == 'FALSE') {
+                        $b = 0;
+                    }
 
-        //     // Then we check if the condition is fullfilled
-        //     switch($operator) {
-        //         case '>' :
-        //             $output = ($a > $b) ? $output : '';
-        //             break;
-        //         case '>=' :
-        //             $output = ($a >= $b) ? $output : '';
-        //             break;
-        //         case '<>' :
-        //             $output = ($a <> $b) ? $output : '';
-        //             break;
-        //         case '!=' :
-        //             $output = ($a != $b) ? $output : '';
-        //             break;
-        //         case '==' :
-        //             $output = ($a == $b) ? $output : '';
-        //             break;
-        //         case '<=' :
-        //             $output = ($a <= $b) ? $output : '';
-        //             break;
-        //         case '<' :
-        //             $output = ($a < $b) ? $output : '';
-        //             break;
-        //     }
-        //     // Then let's check for an {else}
-        //     $else = preg_split("#".$this->l_delim."else".$this->r_delim."#", $conditional[2]);
-        //     // If $output is empty, it means the condition in the above switch was not met, so if an {else} does exist we'll use the second part of the statement. Otherwise the switch condition was met, so if an {else} exists, we'll use the first part of the statement
-        //     if( count($else) > 1 ) {
-        //         $output = ( $output == '' ) ? $else[1] : $else[0];
-        //     }
+                    // Then we check if the condition is fullfilled
+                    switch($operator) {
+                        case '>' :
+                            $output = ($a > $b) ? $output : '';
+                            break;
+                        case '>=' :
+                            $output = ($a >= $b) ? $output : '';
+                            break;
+                        case '<>' :
+                            $output = ($a <> $b) ? $output : '';
+                            break;
+                        case '!=' :
+                            $output = ($a != $b) ? $output : '';
+                            break;
+                        case '==' :
+                            $output = ($a == $b) ? $output : '';
+                            break;
+                        case '<=' :
+                            $output = ($a <= $b) ? $output : '';
+                            break;
+                        case '<' :
+                            $output = ($a < $b) ? $output : '';
+                            break;
+                    }
+                    // Then let's check for an {else}
+                    $else = preg_split("#".$this->l_delim."else".$this->r_delim."#", $conditional[3]);
+                    // If $output is empty, it means the condition in the above switch was not met, so if an {else} does exist we'll use the second part of the statement. Otherwise the switch condition was met, so if an {else} exists, we'll use the first part of the statement
+                    if(count($else) > 1) {
+                        $output = ($output == '') ? $else[1] : $else[0];
+                    }
 
-        //     // At last, we can replace the template code with the output we want to display
-        //     $template = str_replace($conditional[0], $output, $template);
-        //     $template = $this->_parse_conditionals($template, $data);
-        // }
+                    // At last, we can replace the template code with the output we want to display
+                    $template = str_replace($conditional[0], $output, $template);
+                }
+            }
+        }
 
         // Return the formatted content
         return $template;
@@ -384,7 +377,7 @@ class MY_Parser extends CI_Parser {
     }
 
     /**
-     * Parse object tag
+     * Parse object tag : {some_class.some_attribute}
      * @param  string
      * @param  object
      * @param  string
@@ -421,7 +414,7 @@ class MY_Parser extends CI_Parser {
     }
 
     /**
-     * Parses tag pairs : {some_tag} string... {/some_tag}
+     * Parses tag pairs : {some_array} string... {/some_array}
      *
      * @param  string
      * @param  array
