@@ -6,13 +6,12 @@ CI Parser Library extension (empty tags replacement, extended loops, conditional
 > To see how to load, initialize and use standard methods of the CI Parser Library, see [Template Parser Class Documentation](http://www.codeigniter.com/user_guide/libraries/parser.html)
 
 <br>
-## Installation
-### Step 1 Installation by Composer
-#### Run composer
+## Installation by Composer
+#### Option 1 : Run composer
 ```shell
 composer require gccloud/parser
 ```
-#### Or edit /composer.json
+#### Option 2 : or edit /composer.json
 ```json
 {
     "require":
@@ -21,19 +20,9 @@ composer require gccloud/parser
     }
 }
 ```
-#### Run composer update
+#### And then run composer update
 ```shell
 composer update
-```
-
-### Step 2 Create file
-```txt
-/application/libraries/MY_Parser.php
-```
-```php
-<?php
-defined('BASEPATH') OR exit('No direct script access allowed');
-require(APPPATH.'/libraries/MY_Parser/MY_Parser.php');
 ```
 
 <br>
