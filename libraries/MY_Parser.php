@@ -22,7 +22,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20150901
+ * @version     20151020
  */
 class MY_Parser extends CI_Parser {
 
