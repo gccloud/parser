@@ -50,8 +50,8 @@ class MY_Parser extends CI_Parser {
         foreach($data as $key => $val) {
             $replace = array_merge(
                 $replace,
-                is_object($val) ? $this->_parse_object($key, $val, $template) : 
-                (is_array($val) ? $this->_parse_pair($key, $val, $template) : 
+                is_object($val) ? $this->_parse_object($key, $val, $template) :
+                (is_array($val) ? $this->_parse_pair($key, $val, $template) :
                 $this->_parse_single($key, (string) $val, $template))
             );
         }
@@ -79,7 +79,7 @@ class MY_Parser extends CI_Parser {
 
         return $template;
     }
-    
+
     /**
      * Parses conditionals pseudo-variables contained in the specified template view
      * @param  string
@@ -117,7 +117,7 @@ class MY_Parser extends CI_Parser {
             if( ! empty($conditionals)) {
                 foreach($conditionals as $conditional) {
                     // First we extract the content we want to output if the conditional is satisfied
-                    $output = $conditional[3]; 
+                    $output = $conditional[3];
 
                     // And dissect the if statement to get the comparison values and operator. Also remove any currency characters.
                     $statement = str_replace($currency, '', $conditional[2]);
@@ -190,6 +190,9 @@ class MY_Parser extends CI_Parser {
      * @return string
      */
     protected function _parse_switch($template, $data) {
+        // Some settings
+        $currency = '&pound;';
+
         // First we'll check for SWITCH conditionals
         preg_match_all("#".$this->l_delim."switch (\w)".$this->r_delim."(.+)".$this->l_delim."/switch".$this->r_delim."#sU", $template, $conditionals, PREG_SET_ORDER);
         if( ! empty($conditionals) ) {
@@ -239,6 +242,9 @@ class MY_Parser extends CI_Parser {
      * @return string
      */
     protected function _parse_loops($template, $data) {
+        // Some settings
+        $currency = '&pound;';
+
         // First we'll check for FOR structures
         preg_match_all('#'.$this->l_delim.'for (\w+) from (\d+) to (\d+) step (\d+)'.$this->r_delim.'(.+?)'.$this->l_delim.'/for'.$this->r_delim.'#s', $template, $loops, PREG_SET_ORDER);
         if( ! empty($loops) ) {
@@ -327,7 +333,7 @@ class MY_Parser extends CI_Parser {
                     $return = ($args !== "");
                     $template = str_replace($code, $return, $template);
                 }
-                else if(function_exists($func)) {         
+                else if(function_exists($func)) {
                     // We finally try to execute it (and catch any result returned)
                     try {
                         $return = call_user_func_array($func, $args);
