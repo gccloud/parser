@@ -50,10 +50,10 @@ block to output if condition returns FALSE<br>
 #### Conditional SWITCH
 {<b>switch</b> {<i>variable</i>}}<br>
 {<b>case</b> <i>first_value</i>}<br>
-block to output if the first case matches excpected value<br>
+block to output if the first case matches expected value<br>
 {<b>break</b>}<br>
 {<b>case</b> <i>second_value</i>}<br>
-block to output if the second case matches excpected value<br>
+block to output if the second case matches expected value<br>
 {<b>break</b>}<br>
 {<b>default</b>}<br>
 default block to output<br>

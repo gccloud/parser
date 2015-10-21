@@ -68,7 +68,8 @@ class MY_Parser extends CI_Parser {
         $template = $this->_parse_helpers($template, $data);
 
         // And last, check for conditional statements
-        $template = $this->_parse_switch($template, $data);
+        $template = $this->_parse_loop($template);
+        $template = $this->_parse_switch($template);
         $template = $this->_parse_conditionals($template);
 
         unset($data);
@@ -184,51 +185,71 @@ class MY_Parser extends CI_Parser {
     }
 
     /**
-     * [_parse_switch description]
+     * Parses switch pseudo-variables contained in the specified template view
      * @param  string
-     * @param  array
      * @return string
      */
-    protected function _parse_switch($template, $data) {
+    protected function _parse_switch($template) {
         // Some settings
         $currency = '&pound;';
 
-        // First we'll check for SWITCH conditionals
-        preg_match_all("#".$this->l_delim."switch (\w)".$this->r_delim."(.+)".$this->l_delim."/switch".$this->r_delim."#sU", $template, $conditionals, PREG_SET_ORDER);
-        if( ! empty($conditionals) ) {
-            // And loop through the conditionals we found above
-            foreach ( $conditionals as $conditional ) {
+        // Pre-parsing process : we'll first replace each {switch}...{/switch} pair by a numbered one - {switch(n)}...{/switch(n)} - for correct processing
+        $switch_pattern = $this->l_delim.'switch ';
+        $endswitch_pattern = $this->l_delim.'\/switch'.$this->r_delim;
 
-                // First we remove the raw code from the template
-                $code = $conditional[0];
+        preg_match_all('#'.$switch_pattern.'|'.$endswitch_pattern.'#sU', $template, $preprocess, PREG_SET_ORDER);
 
-                // Remove any surrounding quotes as we can ignore them. Also remove any currency characters.
-                $statement = str_replace($currency, '', $conditional[1]);
+        if( ! empty($preprocess)) {
+            $count = 0;
+            $last_count = array();
+            foreach($preprocess as $p) {
+                if($p[0] === $switch_pattern) {
+                    ++$count;
+                    $last_count[] = $count;
+                    $template = preg_replace('#'.$switch_pattern.'#', $this->l_delim.'switch'.$count.' ', $template, 1);
+                }
+                else {
+                    $last = array_pop($last_count);
+                    $template = preg_replace('#'.$endswitch_pattern.'#', $this->l_delim.'/switch'.$last.$this->r_delim, $template, 1);
+                }
+            }
 
-                $output = '';
-                // Then we'll extract the cases list we'll loop through
-                $sub = $conditional[2];
-                preg_match_all('#'.$this->l_delim.'case (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $cases, PREG_SET_ORDER);
-                if( ! empty($cases)) {
-                    foreach($cases as $case) {
-                        // And check - for each one - if the statement match the given value
-                        if($statement == $case[1]) {
-                            $output = $case[2];
-                            break;
+            // First we'll check for SWITCH conditionals
+            preg_match_all('#'.$this->l_delim.'switch(\d+) (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'/switch(\1)'.$this->r_delim.'#sU', $template, $conditionals, PREG_SET_ORDER);
+            if( ! empty($conditionals)) {
+                // And loop through the conditionals we found above
+                foreach($conditionals as $conditional) {
+                    // First we remove the raw code from the template
+                    $code = $conditional[0];
+
+                    // Remove any surrounding quotes as we can ignore them. Also remove any currency characters.
+                    $statement = str_replace($currency, '', $conditional[2]);
+
+                    $output = '';
+                    // Then we'll extract the cases list we'll loop through
+                    $sub = $conditional[3];
+                    preg_match_all('#'.$this->l_delim.'case (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $cases, PREG_SET_ORDER);
+                    if( ! empty($cases)) {
+                        foreach($cases as $case) {
+                            // And check - for each one - if the statement match the given value
+                            if($statement == $case[1]) {
+                                $output = $case[2];
+                                break;
+                            }
                         }
                     }
-                }
-                // If no output was actually set, then we didn't found any case that match, so we'll check for a default block
-                // If no default statement is found, then no output will be set at all (we'll just return an empty string)
-                if($output == '') {
-                    preg_match('#'.$this->l_delim.'default'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $default);
-                    if( ! empty($default)) {
-                        $output = $default[1];
+                    // If no output was actually set, then we didn't found any case that match, so we'll check for a default block
+                    // If no default statement is found, then no output will be set at all (we'll just return an empty string)
+                    if($output == '') {
+                        preg_match('#'.$this->l_delim.'default'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $default);
+                        if( ! empty($default)) {
+                            $output = $default[1];
+                        }
                     }
-                }
 
-                // At last, we can replace the template code with the output we want to display
-                $template = str_replace($code, $output, $template);
+                    // At last, we can replace the template code with the output we want to display
+                    $template = str_replace($code, $output, $template);
+                }
             }
         }
 
@@ -238,69 +259,51 @@ class MY_Parser extends CI_Parser {
     /**
      * Parses loops pseudo-variables contained in the specified template view
      * @param  string
-     * @param  array
      * @return string
      */
-    protected function _parse_loops($template, $data) {
+    protected function _parse_loops($template) {
         // Some settings
         $currency = '&pound;';
 
-        // First we'll check for FOR structures
-        preg_match_all('#'.$this->l_delim.'for (\w+) from (\d+) to (\d+) step (\d+)'.$this->r_delim.'(.+?)'.$this->l_delim.'/for'.$this->r_delim.'#s', $template, $loops, PREG_SET_ORDER);
-        if( ! empty($loops) ) {
-            // And loop through the conditionals we found above
-            foreach ($loops as $loop) {
+        // Pre-parsing process : we'll first replace each {switch}...{/switch} pair by a numbered one - {switch(n)}...{/switch(n)} - for correct processing
+        $for_pattern = $this->l_delim.'for ';
+        $endfor_pattern = $this->l_delim.'\/for'.$this->r_delim;
 
-                $output = '';
-                // First we extract the content we want to output inside the loop
-                $display = $loop[5];
+        preg_match_all('#'.$for_pattern.'|'.$endfor_pattern.'#sU', $template, $preprocess, PREG_SET_ORDER);
 
-                // And then we make the actual loop (replacing any increment call inside each line by its value)
-                for($i = $loop[2]; $i <= $loop[3]; $i = $i+$loop[4]) {
-                    $output .= str_replace($this->l_delim.$loop[1].$this->r_delim, $i, $display);
+        if( ! empty($preprocess)) {
+            $count = 0;
+            $last_count = array();
+            foreach($preprocess as $p) {
+                if($p[0] === $for_pattern) {
+                    ++$count;
+                    $last_count[] = $count;
+                    $template = preg_replace('#'.$for_pattern.'#', $this->l_delim.'for'.$count.' ', $template, 1);
                 }
-
-                // At last, we can replace the template code with the output we want to display
-                $template = str_replace($loop[0], $output, $template);
+                else {
+                    $last = array_pop($last_count);
+                    $template = preg_replace('#'.$endfor_pattern.'#', $this->l_delim.'/for'.$last.$this->r_delim, $template, 1);
+                }
             }
-        }
 
-        // Then we'll check for SWITCH conditionals
-        preg_match_all('#'.$this->l_delim.'switch (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'/switch'.$this->r_delim.'#sU', $template, $conditionals, PREG_SET_ORDER);
-        if( ! empty($conditionals) ) {
-            // And loop through the conditionals we found above
-            foreach ( $conditionals as $conditional ) {
+            // First we'll check for FOR structures
+            preg_match_all('#'.$this->l_delim.'for(\d+) (\w+) from (\d+) to (\d+) step (\d+)'.$this->r_delim.'(.+?)'.$this->l_delim.'/for(\1)'.$this->r_delim.'#s', $template, $loops, PREG_SET_ORDER);
+            if( ! empty($loops) ) {
+                // And loop through the conditionals we found above
+                foreach ($loops as $loop) {
 
-                // First we remove the raw code from the template
-                $code = $conditional[0];
+                    $output = '';
+                    // First we extract the content we want to output inside the loop
+                    $display = $loop[5];
 
-                // Remove any surrounding quotes as we can ignore them. Also remove any currency characters.
-                $statement = str_replace($currency, '', $conditional[1]);
-
-                $output = '';
-                // Then we'll extract the cases list we'll loop through
-                $sub = $conditional[2];
-                preg_match_all('#'.$this->l_delim.'case (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $cases, PREG_SET_ORDER);
-                if( ! empty($cases)) {
-                    foreach($cases as $case) {
-                        // And check - for each one - if the statement match the given value
-                        if($statement == $case[1]) {
-                            $output = $case[2];
-                            break;
-                        }
+                    // And then we make the actual loop (replacing any increment call inside each line by its value)
+                    for($i = $loop[2]; $i <= $loop[3]; $i = $i + $loop[4]) {
+                        $output .= str_replace($this->l_delim.$loop[1].$this->r_delim, $i, $display);
                     }
-                }
-                // If no output was actually set, then we didn't found any case that match, so we'll check for a default block
-                // If no default statement is found, then no output will be set at all (we'll just return an empty string)
-                if($output == '') {
-                    preg_match('#'.$this->l_delim.'default'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $default);
-                    if( ! empty($default)) {
-                        $output = $default[1];
-                    }
-                }
 
-                // At last, we can replace the template code with the output we want to display
-                $template = str_replace($code, $output, $template);
+                    // At last, we can replace the template code with the output we want to display
+                    $template = str_replace($loop[0], $output, $template);
+                }
             }
         }
 
@@ -483,7 +486,7 @@ class MY_Parser extends CI_Parser {
         preg_match_all('#'.$this->l_delim.'\w+'.$this->r_delim.'#sU', $template, $unparsed, PREG_SET_ORDER);
         if( ! empty($unparsed)) {
             foreach ($unparsed as $u) {
-                if($u[0] != '{else}') {
+                if( ! in_array($u[0], array('{else}', '{break}', '{default}'))) {
                     $template = str_ireplace($u[0], "", $template);
                 }
             }
