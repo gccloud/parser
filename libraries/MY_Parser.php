@@ -68,7 +68,7 @@ class MY_Parser extends CI_Parser {
         $template = $this->_parse_helpers($template, $data);
 
         // And last, check for conditional statements
-        $template = $this->_parse_loop($template);
+        $template = $this->_parse_loops($template);
         $template = $this->_parse_switch($template);
         $template = $this->_parse_conditionals($template);
 
