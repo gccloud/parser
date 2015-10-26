@@ -92,9 +92,10 @@ class MY_Parser extends CI_Parser {
         if($preprocess) {
             // Pre-parsing process : we'll first replace each {if}...{/if} pair by a numbered one - {if(n)}...{/if(n)} - for correct processing
             $if_pattern = $this->l_delim.'if ';
+            $else_pattern = $this->l_delim.'else'.$this->r_delim;
             $endif_pattern = $this->l_delim.'\/if'.$this->r_delim;
 
-            preg_match_all('#'.$if_pattern.'|'.$endif_pattern.'#sU', $template, $preprocess, PREG_SET_ORDER);
+            preg_match_all('#'.$if_pattern.'|'.$else_pattern.'|'.$endif_pattern.'#sU', $template, $preprocess, PREG_SET_ORDER);
 
             if( ! empty($preprocess)) {
                 $count = 0;
@@ -104,6 +105,11 @@ class MY_Parser extends CI_Parser {
                         ++$count;
                         $last_count[] = $count;
                         $template = preg_replace('#'.$if_pattern.'#', $this->l_delim.'if'.$count.' ', $template, 1);
+                    }
+                    else if($p[0] === $else_pattern) {
+                        $last = array_pop($last_count);
+                        $last_count[] = $last;
+                        $template = preg_replace('#'.$else_pattern.'#', $this->l_delim.'else'.$last.$this->r_delim, $template, 1);
                     }
                     else {
                         $last = array_pop($last_count);
@@ -169,7 +175,7 @@ class MY_Parser extends CI_Parser {
                         break;
                 }
                 // Then let's check for an {else}
-                $else = preg_split("#".$this->l_delim."else".$this->r_delim."#", $conditional[3]);
+                $else = preg_split("#".$this->l_delim."else".$conditional[1].$this->r_delim."#", $conditional[3]);
                 // If $output is empty, it means the condition in the above switch was not met, so if an {else} does exist we'll use the second part of the statement. Otherwise the switch condition was met, so if an {else} exists, we'll use the first part of the statement
                 if(count($else) > 1) {
                     $output = ($output == '') ? $else[1] : $else[0];
