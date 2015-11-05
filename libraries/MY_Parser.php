@@ -22,7 +22,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20151021
+ * @version     20151105
  */
 class MY_Parser extends CI_Parser {
 
@@ -45,6 +45,7 @@ class MY_Parser extends CI_Parser {
         // Check for loop statements
         $template = $this->_parse_loops($template, TRUE);
 
+        // Variable replacement pre-processing
         $replace = array();
         foreach($data as $key => $val) {
             $replace = array_merge(
@@ -54,27 +55,30 @@ class MY_Parser extends CI_Parser {
                 $this->_parse_single($key, (string) $val, $template))
             );
         }
-
-        // Variable replacement (actually viable only for every variable defined in $data, not tags defined in the parsed template)
+        // Variable replacement processing (actually viable only for every variable defined in $data, not tags defined in the parsed template)
         foreach($replace as $from => $to) {
             $template = str_ireplace($from, $to, $template);
         }
 
-        // Unparsed tags removal
-        $template = $this->_remove_unparsed($template);
+        // Datas fully replaced, we don't need it anymore
+        unset($data);
+
+        // Unparsed tags replacement (each one will be replaced by a Parser special tag - {EMPTY_VAR})
+        $template = $this->_replace_unparsed($template);
 
         // Check for helpers calls
-        $template = $this->_parse_helpers($template, $data);
+        $template = $this->_parse_helpers($template);
 
-        // And last, check for conditional statements
+        // Check for conditional statements
         $template = $this->_parse_switch($template, TRUE);
         $template = $this->_parse_conditionals($template, TRUE);
-
-        unset($data);
 
         if ($return === FALSE) {
             $this->CI->output->append_output($template);
         }
+
+        // And last, unparsed tags removal
+        $template = $this->_remove_unparsed($template);
 
         return $template;
     }
@@ -132,50 +136,58 @@ class MY_Parser extends CI_Parser {
 
                 preg_match('#(.+\s?)(>|>=|<>|!=|==|<=|<)(.+\s?)#', $statement, $comparison);
 
-                $a = (trim($comparison[1]) != '') ? str_replace('"', '', trim($comparison[1])) : FALSE;
-                $b = (trim($comparison[3]) != '') ? str_replace('"', '', trim($comparison[3])) : FALSE;
-                $operator = trim($comparison[2]);
+                // Is it a true comparison, or direct boolean check ?
+                if( ! empty($comparison)) {
+                    $a = (trim($comparison[1]) != '') ? str_replace('"', '', trim($comparison[1])) : FALSE;
+                    $b = (trim($comparison[3]) != '') ? str_replace('"', '', trim($comparison[3])) : FALSE;
+                    $operator = trim($comparison[2]);
 
-                // Check for true/false values and convert them to booleans for better parser comparison
-                if($a == 'true' or $a == 'TRUE') {
-                    $a = 1;
+                    // Check for true/false values and convert them to booleans for better parser comparison
+                    if($a == 'true' or $a == 'TRUE') {
+                        $a = 1;
+                    }
+                    elseif($a == 'false' or $a == 'FALSE') {
+                        $a = 0;
+                    }
+                    if($b == 'true' or $b == 'TRUE') {
+                        $b = 1;
+                    }
+                    elseif ($b == 'false' or $b == 'FALSE') {
+                        $b = 0;
+                    }
+
+                    // Then we check if the condition is fullfilled
+                    switch($operator) {
+                        case '>' :
+                            $output = ($a > $b) ? $output : '';
+                            break;
+                        case '>=' :
+                            $output = ($a >= $b) ? $output : '';
+                            break;
+                        case '<>' :
+                            $output = ($a <> $b) ? $output : '';
+                            break;
+                        case '!=' :
+                            $output = ($a != $b) ? $output : '';
+                            break;
+                        case '==' :
+                            $output = ($a == $b) ? $output : '';
+                            break;
+                        case '<=' :
+                            $output = ($a <= $b) ? $output : '';
+                            break;
+                        case '<' :
+                            $output = ($a < $b) ? $output : '';
+                            break;
+                    }
                 }
-                elseif($a == "false" or $a == 'FALSE') {
-                    $a = 0;
-                }
-                if($b == 'true' or $b == 'TRUE') {
-                    $b = 1;
-                }
-                elseif ($b == 'false' or $b == 'FALSE') {
-                    $b = 0;
+                // No compouned statement found, we're making a direct boolean check
+                else {
+                    $output = ($statement == '1') ? $output : '';
                 }
 
-                // Then we check if the condition is fullfilled
-                switch($operator) {
-                    case '>' :
-                        $output = ($a > $b) ? $output : '';
-                        break;
-                    case '>=' :
-                        $output = ($a >= $b) ? $output : '';
-                        break;
-                    case '<>' :
-                        $output = ($a <> $b) ? $output : '';
-                        break;
-                    case '!=' :
-                        $output = ($a != $b) ? $output : '';
-                        break;
-                    case '==' :
-                        $output = ($a == $b) ? $output : '';
-                        break;
-                    case '<=' :
-                        $output = ($a <= $b) ? $output : '';
-                        break;
-                    case '<' :
-                        $output = ($a < $b) ? $output : '';
-                        break;
-                }
                 // Then let's check for an {else}
-                $else = preg_split("#".$this->l_delim."else".$conditional[1].$this->r_delim."#", $conditional[3]);
+                $else = preg_split('#'.$this->l_delim.'else'.$conditional[1].$this->r_delim.'#', $conditional[3]);
                 // If $output is empty, it means the condition in the above switch was not met, so if an {else} does exist we'll use the second part of the statement. Otherwise the switch condition was met, so if an {else} exists, we'll use the first part of the statement
                 if(count($else) > 1) {
                     $output = ($output == '') ? $else[1] : $else[0];
@@ -225,7 +237,7 @@ class MY_Parser extends CI_Parser {
         }
 
         // First we'll check for SWITCH conditionals
-        preg_match_all('#'.$this->l_delim.'switch(\d+) (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'/switch(\1)'.$this->r_delim.'#sU', $template, $conditionals, PREG_SET_ORDER);
+        preg_match_all('#'.$this->l_delim.'switch(\d+) (.+)'.$this->r_delim.'(.+)'.$this->l_delim.'/switch(\1)'.$this->r_delim.'#sU', $template, $conditionals, PREG_SET_ORDER);
         if( ! empty($conditionals)) {
             // And loop through the conditionals we found above
             foreach($conditionals as $conditional) {
@@ -238,7 +250,7 @@ class MY_Parser extends CI_Parser {
                 $output = '';
                 // Then we'll extract the cases list we'll loop through
                 $sub = $conditional[3];
-                preg_match_all('#'.$this->l_delim.'case (\w)'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $cases, PREG_SET_ORDER);
+                preg_match_all('#'.$this->l_delim.'case (.+)'.$this->r_delim.'(.+)'.$this->l_delim.'break'.$this->r_delim.'#sU', $sub, $cases, PREG_SET_ORDER);
                 if( ! empty($cases)) {
                     foreach($cases as $case) {
                         // And check - for each one - if the statement match the given value
@@ -325,10 +337,9 @@ class MY_Parser extends CI_Parser {
     /**
      * Parses helpers pseudo-variables (thus calling corresponding helpers) contained in the specified template view
      * @param  string
-     * @param  array
      * @return string
      */
-    protected function _parse_helpers($template, $data) {
+    protected function _parse_helpers($template) {
         // First we'll check for any declarations
         preg_match_all('#'.$this->l_delim.'(\w+)(\()(.*)(\))'.$this->r_delim.'#sU', $template, $helpers, PREG_SET_ORDER);
 
@@ -484,26 +495,35 @@ class MY_Parser extends CI_Parser {
      * @param  string
      * @return string
      */
-    protected function _remove_unparsed($template) {
-        // Pair tags removal
+    protected function _replace_unparsed($template) {
+        // Pair tags replacement
         preg_match_all('#('.$this->l_delim.'(\w+)'.$this->r_delim.'(.+?)'.$this->l_delim.'\/(\2)'.$this->r_delim.')#sU', $template, $unparsed, PREG_SET_ORDER);
         if( ! empty($unparsed)) {
             foreach ($unparsed as $u) {
-                $template = str_ireplace($u[0], "", $template);
+                $template = str_ireplace($u[0], '%EMPTY_VAR%', $template);
             }
         }
 
-        // Simple tags removal
+        // Simple tags replacement
         preg_match_all('#'.$this->l_delim.'\w+'.$this->r_delim.'#sU', $template, $unparsed, PREG_SET_ORDER);
         if( ! empty($unparsed)) {
             foreach ($unparsed as $u) {
-                if( ! in_array($u[0], array('{else}', '{break}', '{default}'))) {
-                    $template = str_ireplace($u[0], "", $template);
+                if( ! in_array($u[0], array('{else}','{break}','{default}'))) {
+                    $template = str_ireplace($u[0], '%EMPTY_VAR%', $template);
                 }
             }
         }
 
         return $template;
+    }
+
+    /**
+     * [_remove_unparsed description]
+     * @param  string
+     * @return string
+     */
+    protected function _remove_unparsed($template) {
+        return str_ireplace('%EMPTY_VAR%', '', $template);
     }
 
 }
