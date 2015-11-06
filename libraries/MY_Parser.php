@@ -183,7 +183,7 @@ class MY_Parser extends CI_Parser {
                 }
                 // No compouned statement found, we're making a direct boolean check
                 else {
-                    $output = ($statement == '1') ? $output : '';
+                    $output = ( ! empty($statement) && $statement != '0' && $statement != '%EMPTY_VAR%') ? $output : '';
                 }
 
                 // Then let's check for an {else}
@@ -476,7 +476,7 @@ class MY_Parser extends CI_Parser {
                         continue;
                     }
 
-                    $temp[$this->l_delim.$key.$this->r_delim] = $val;
+                    $temp[$this->l_delim.$key.$this->r_delim] = ( ! empty($val) ? $val : '%EMPTY_VAR%');
                 }
 
                 $str .= strtr($match[1], $temp);
