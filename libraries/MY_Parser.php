@@ -57,7 +57,7 @@ class MY_Parser extends CI_Parser {
         }
         // Variable replacement processing (actually viable only for every variable defined in $data, not tags defined in the parsed template)
         foreach($replace as $from => $to) {
-            $template = str_ireplace($from, $to, $template);
+            $template = str_ireplace($from, ( ! empty($to) ? $to : '%EMPTY_VAR%'), $template);
         }
 
         // Datas fully replaced, we don't need it anymore
