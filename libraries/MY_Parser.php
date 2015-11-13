@@ -22,12 +22,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20151105
+ * @version     20151113
  */
 class MY_Parser extends CI_Parser {
 
     /**
      * Parses pseudo-variables contained in the specified template, replacing them with the data in the second param
+     * @method _parse
      * @param  string
      * @param  array
      * @param  bool
@@ -85,6 +86,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses conditionals pseudo-variables contained in the specified template view
+     * @method _parse_conditionals
      * @param  string
      * @param  array
      * @return string
@@ -205,6 +207,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses switch pseudo-variables contained in the specified template view
+     * @method _parse_switch
      * @param  string
      * @return string
      */
@@ -279,6 +282,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses loops pseudo-variables contained in the specified template view
+     * @method _parse_loops
      * @param  string
      * @return string
      */
@@ -336,6 +340,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses helpers pseudo-variables (thus calling corresponding helpers) contained in the specified template view
+     * @method _parse_helpers
      * @param  string
      * @return string
      */
@@ -377,6 +382,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses helper arguments
+     * @method _parse_helpers_args
      * @param  string
      * @return array
      */
@@ -409,6 +415,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parse object tag : {some_class.some_attribute}
+     * @method _parse_object
      * @param  string
      * @param  object
      * @param  string
@@ -433,11 +440,16 @@ class MY_Parser extends CI_Parser {
                 $attr = $match[1];
             }
 
-            if(method_exists($class, $attr)) {
-                $replace[$match[0]] = $class->$attr();
+            if(is_object($class)) {
+                if(method_exists($class, $attr)) {
+                    $replace[$match[0]] = $class->$attr();
+                }
+                else if(property_exists($class, $attr)) {
+                    $replace[$match[0]] = $class->$attr;
+                }
             }
-            else if(property_exists($class, $attr)) {
-                $replace[$match[0]] = $class->$attr;
+            else {
+                $replace[$match[0]] = '%EMPTY_VAR%';
             }
         }
 
@@ -446,7 +458,7 @@ class MY_Parser extends CI_Parser {
 
     /**
      * Parses tag pairs : {some_array} string... {/some_array}
-     *
+     * @method _parse_pair
      * @param  string
      * @param  array
      * @param  string
@@ -491,7 +503,8 @@ class MY_Parser extends CI_Parser {
     }
 
     /**
-     * [_remove_unparsed description]
+     * Replacde unparsed tags with a Parser dedicated tag (%EMPTY_VAR%)
+     * @method _replace_unparsed
      * @param  string
      * @return string
      */
@@ -518,7 +531,8 @@ class MY_Parser extends CI_Parser {
     }
 
     /**
-     * [_remove_unparsed description]
+     * Removes all "unparsed" tags (i.e replaces all %EMPTY_VAR% tags by an empty string)
+     * @method _remove_unparsed
      * @param  string
      * @return string
      */
