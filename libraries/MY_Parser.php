@@ -447,6 +447,9 @@ class MY_Parser extends CI_Parser {
                 else if(property_exists($class, $attr)) {
                     $replace[$match[0]] = $class->$attr;
                 }
+                else {
+                    $replace[$match[0]] = '%EMPTY_VAR%';
+                }
             }
             else {
                 $replace[$match[0]] = '%EMPTY_VAR%';
