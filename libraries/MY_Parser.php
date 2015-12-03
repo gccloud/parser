@@ -423,7 +423,7 @@ class MY_Parser extends CI_Parser {
      */
     protected function _parse_object($key, $val, $template) {
         $replace = array();
-        preg_match_all('#'.preg_quote($this->l_delim).$key.'.'.'(.+?)'.preg_quote($this->r_delim).'#', $template, $matches, PREG_SET_ORDER);
+        preg_match_all('#'.preg_quote($this->l_delim).$key.'\.'.'(.+?)'.preg_quote($this->r_delim).'#', $template, $matches, PREG_SET_ORDER);
 
         foreach($matches as $match) {
             $class = $val;
