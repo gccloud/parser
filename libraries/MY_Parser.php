@@ -22,7 +22,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @subpackage  Libraries
  * @category    Library
  * @author      Gregory Carrodano
- * @version     20151113
+ * @version     20161121
  */
 class MY_Parser extends CI_Parser
 {
@@ -525,7 +525,7 @@ class MY_Parser extends CI_Parser
         preg_match_all('#'.$this->l_delim.'\w+'.$this->r_delim.'#sU', $template, $unparsed, PREG_SET_ORDER);
         if ( ! empty($unparsed)) {
             foreach ($unparsed as $u) {
-                if ( ! in_array($u[0], array('{else}','{break}','{default}'))) {
+                if ( ! in_array($u[0], array($this->l_delim.'else'.$this->r_delim, $this->l_delim.'break'.$this->r_delim, $this->l_delim.'default'.$this->r_delim))) {
                     $template = str_ireplace($u[0], '%EMPTY_VAR%', $template);
                 }
             }
